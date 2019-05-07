@@ -46,3 +46,55 @@ fitted_tree <- tree(total~lat+long,data=taxi)
 plot(fitted_tree)
 text(fitted_tree)
 
+
+# Loading in the lubridate package
+library(lubridate)
+
+# Generate the three new time variables
+taxi <- taxi %>% 
+  mutate(hour=hour(pickup_datetime),
+         wday=wday(pickup_datetime,label=TRUE),
+         month=month(pickup_datetime,label=TRUE))
+
+# Fitting a tree with total as the outcome and 
+# lat, long, hour, wday, and month as predictors
+fitted_tree <- tree(total ~ lat+long+hour+wday+month,data=taxi)
+
+# draw a diagram of the tree structure
+plot(fitted_tree)
+text(fitted_tree)
+
+# Summarizing the performance of the tree
+summary(fitted_tree)
+
+# Loading in the randomForest package
+library(randomForest)
+
+# Fitting a random forest
+fitted_forest <- randomForest(total ~ lat+long+hour+wday+month,ntree=80,sampsize=10000,data=taxi)
+
+# Printing the fitted_forest object
+summary(fitted_forest)
+
+# Extracting the prediction from fitted_forest
+taxi$pred_total <- fitted_forest$predicted 
+
+# Plotting the predicted mean trip prices from according to the random forest
+ggmap(manhattan, darken = 0.5) +
+  scale_fill_viridis(option = 'plasma') +
+  stat_summary_2d(data=taxi, aes(x=long,y=lat,z = pred_total),fun = mean,bins=60,alpha=0.6) +
+  labs(x='Longitude',y='Latitude',z='pred_total',fill='Journeys')
+
+# Function that returns the mean *if* there are 15 or more datapoints
+mean_if_enough_data <- function(x) { 
+  ifelse( length(x) >= 15, mean(x), NA) 
+}
+
+# Plotting the mean trip prices from the data
+ggmap(manhattan, darken = 0.5) +
+  scale_fill_viridis(option = 'plasma') +
+  stat_summary_2d(data=taxi, aes(x=long,y=lat,z = total),fun = mean_if_enough_data,bins=60,alpha=0.6) +
+  labs(x='Longitude',y='Latitude',z='total',fill='Journeys')
+
+# Where are people spending the most on their taxi trips?
+spends_most_on_trips <- uptown
